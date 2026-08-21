@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==8.3.4
+httpx==0.28.1
+# Only needed to run tests locally under Python <3.10; the Dockerfile uses 3.12.
+eval_type_backport==0.2.0; python_version < "3.10"

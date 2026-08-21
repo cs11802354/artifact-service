@@ -1,0 +1,77 @@
+"""Canonical-representation compiler.
+
+A validated ArtifactSpec is the canonical representation. Each renderer turns
+it into bytes for one output format. Only html/markdown are real; pdf/docx/
+pptx are stubbed the same way the finance tools in ai-workforce are stubbed —
+the dispatch path is real, the adapter body is not, so swapping in a real
+renderer later is a one-function change.
+"""
+
+from __future__ import annotations
+
+import html as html_escape
+
+from app.models import ArtifactSpec
+
+THEMES = {
+    "default": {"accent": "#2563eb", "bg": "#ffffff", "fg": "#111827"},
+    "dark": {"accent": "#60a5fa", "bg": "#0b0f19", "fg": "#e5e7eb"},
+}
+
+
+def compile_html(spec: ArtifactSpec) -> bytes:
+    theme = THEMES.get(spec.theme, THEMES["default"])
+    title = html_escape.escape(spec.title)
+
+    body_parts = []
+    for section in spec.sections:
+        heading = html_escape.escape(section.heading)
+        # Content is treated as preformatted text, not markdown/HTML, so no
+        # user-supplied markup is ever interpreted as live HTML.
+        content = html_escape.escape(section.content)
+        body_parts.append(
+            f'<section><h2>{heading}</h2><p>{content}</p></section>'
+        )
+
+    doc = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; background: {theme['bg']}; color: {theme['fg']}; \
+max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }}
+  h1 {{ color: {theme['accent']}; }}
+  h2 {{ color: {theme['accent']}; font-size: 1.15rem; margin-top: 2rem; }}
+  section {{ margin-bottom: 1rem; }}
+</style>
+</head>
+<body>
+<h1>{title}</h1>
+{"".join(body_parts)}
+</body>
+</html>
+"""
+    return doc.encode("utf-8")
+
+
+def compile_markdown(spec: ArtifactSpec) -> bytes:
+    lines = [f"# {spec.title}", ""]
+    for section in spec.sections:
+        lines.append(f"## {section.heading}")
+        lines.append("")
+        lines.append(section.content)
+        lines.append("")
+    return "\n".join(lines).encode("utf-8")
+
+
+RENDERERS = {
+    "html": compile_html,
+    "markdown": compile_markdown,
+}
+
+
+def compile_artifact(spec: ArtifactSpec) -> bytes:
+    """Raises KeyError for formats with no renderer — callers check
+    `spec.format in RENDERERS` first via STUB_FORMATS."""
+    return RENDERERS[spec.format.value](spec)

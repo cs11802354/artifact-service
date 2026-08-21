@@ -11,6 +11,16 @@ services:
       - artifact_data:/data/artifacts
     ports:
       - "127.0.0.1:8090:8090"
+    networks:
+      - default
+      - agent-net
 
 volumes:
   artifact_data:
+
+networks:
+  # Shared with ai-workforce's worker container so it can reach this service
+  # by container name without exposing the port on the LAN. Created once on
+  # the host with `docker network create agent-net`.
+  agent-net:
+    external: true

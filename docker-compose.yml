@@ -1,0 +1,16 @@
+services:
+  artifact-service:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      ARTIFACT_BASE_URL: ${ARTIFACT_BASE_URL}
+      ARTIFACT_API_KEY: ${ARTIFACT_API_KEY}
+      ARTIFACT_DATA_DIR: /data/artifacts
+    volumes:
+      - artifact_data:/data/artifacts
+    ports:
+      - "127.0.0.1:8090:8090"
+
+volumes:
+  artifact_data:

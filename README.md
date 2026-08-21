@@ -29,6 +29,26 @@ uvicorn app.main:app --reload --port 8090
 pytest
 ```
 
+## Deploy
+
+Same shape as `ai-workforce`'s deploy: `docker-compose.yml` builds and runs
+one service, `.github/workflows/deploy.yml` runs on a `[self-hosted, linux]`
+runner on push to `main` (`docker compose build` -> `docker compose up -d` ->
+health check on `/healthz`). Storage is a named volume (`artifact_data`)
+mounted at `/data/artifacts`, so artifacts survive a redeploy.
+
+This needs its own self-hosted runner registered against *this* repo (Settings
+-> Actions -> Runners) — it does not share ai-workforce's runner registration
+even if it ends up on the same host. Also set `ARTIFACT_BASE_URL` in the
+deploy environment's `.env` to whatever address callers can actually reach
+(a public hostname behind a reverse proxy, same as `ai-workforce`'s
+`ai-workforce-api.manishlab.dev`) — the default `localhost` value only works
+for local dev.
+
+To point ai-workforce's `artifact_generator` tool at a deployed instance, set
+`ARTIFACT_SERVICE_URL` (and `ARTIFACT_API_KEY` if this service has one
+configured) in ai-workforce's environment to this service's `ARTIFACT_BASE_URL`.
+
 ## Config
 
 | Env var | Default | Purpose |

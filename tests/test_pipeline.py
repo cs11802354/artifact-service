@@ -82,3 +82,55 @@ def test_html_content_is_escaped_not_interpreted():
     fetched = client.get(body["url"].replace("http://localhost:8090", ""))
     assert "<script>" not in fetched.text
     assert "&lt;script&gt;" in fetched.text
+
+
+def test_html_content_renders_markdown_formatting():
+    resp = client.post(
+        "/v1/artifacts",
+        json=_spec(
+            sections=[
+                {
+                    "heading": "Next Steps",
+                    "content": "**Ship it** and:\n\n- Notify sales\n- Update docs",
+                }
+            ]
+        ),
+    )
+    body = resp.json()
+    fetched = client.get(body["url"].replace("http://localhost:8090", ""))
+    assert "<strong>Ship it</strong>" in fetched.text
+    assert "<li>Notify sales</li>" in fetched.text
+
+
+def test_html_content_strips_javascript_links():
+    resp = client.post(
+        "/v1/artifacts",
+        json=_spec(
+            sections=[{"heading": "Notes", "content": "[click me](javascript:alert(1))"}]
+        ),
+    )
+    body = resp.json()
+    fetched = client.get(body["url"].replace("http://localhost:8090", ""))
+    assert "javascript:" not in fetched.text
+
+
+def test_oversized_content_rejected():
+    resp = client.post(
+        "/v1/artifacts",
+        json=_spec(sections=[{"heading": "Notes", "content": "x" * 20_001}]),
+    )
+    assert resp.status_code == 422
+
+
+def test_rate_limit_enforced(monkeypatch):
+    import app.ratelimit as ratelimit
+
+    monkeypatch.setattr(ratelimit, "MAX_REQUESTS", 3)
+    ratelimit._hits.clear()
+
+    for _ in range(3):
+        resp = client.post("/v1/artifacts", json=_spec())
+        assert resp.status_code == 200
+
+    resp = client.post("/v1/artifacts", json=_spec())
+    assert resp.status_code == 429

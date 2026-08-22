@@ -9,14 +9,17 @@ the finance tools are stubbed in ai-workforce.
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.auth import AuthDep, auth_enabled
 from app.compiler import compile_artifact
 from app.config import settings
 from app.models import ArtifactResult, ArtifactSpec, STUB_FORMATS
 from app.qa import run_structural_qa
+from app.ratelimit import enforce_rate_limit
 from app.storage import new_id, save, url_for
+
+RateLimitDep = Depends(enforce_rate_limit)
 
 app = FastAPI(title="Artifact Service")
 
@@ -31,7 +34,7 @@ def auth_status():
     return {"required": auth_enabled()}
 
 
-@app.post("/v1/artifacts", response_model=ArtifactResult, dependencies=[AuthDep])
+@app.post("/v1/artifacts", response_model=ArtifactResult, dependencies=[AuthDep, RateLimitDep])
 def create_artifact(spec: ArtifactSpec) -> ArtifactResult:
     artifact_id = new_id()
 

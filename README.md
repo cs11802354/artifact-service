@@ -9,9 +9,13 @@ Agent -> POST /v1/artifacts -> validate -> compile -> structural QA -> store -> 
 
 ## Status
 
-- **Real**: spec validation (Pydantic), HTML + Markdown compilation, structural
-  QA (balanced tags, required title/headings present), local-disk storage with
-  a stable `/files/{id}.{ext}` URL.
+- **Real**: spec validation (Pydantic, including a 20,000-char cap per section),
+  HTML + Markdown compilation — HTML section content is rendered from actual
+  markdown (bold/lists/links) and sanitized (mistune's `escape=True` plus a
+  `bleach` allowlist pass, so raw HTML and non-http(s) link schemes never reach
+  the page) — structural QA (balanced tags, required title/headings present),
+  local-disk storage with a stable `/files/{id}.{ext}` URL, and a per-client
+  rate limit on `/v1/artifacts`.
 - **Stubbed** (dispatch path is real, adapter body says "not connected" rather
   than fabricating output): PDF, DOCX, PPTX rendering; the QA repair loop;
   semantic/visual QA. Each is a self-contained function to fill in later.
@@ -55,7 +59,8 @@ configured) in ai-workforce's environment to this service's `ARTIFACT_BASE_URL`.
 |---|---|---|
 | `ARTIFACT_DATA_DIR` | `/data/artifacts` | Where rendered artifacts are stored |
 | `ARTIFACT_BASE_URL` | `http://localhost:8090` | Base URL used to build the returned artifact URL |
-| `ARTIFACT_API_KEY` | unset | If set, `/v1/artifacts` requires `Authorization: Bearer <key>` |
+| `ARTIFACT_API_KEY` | unset | If set, `/v1/artifacts` requires `Authorization: Bearer <key>`. **Set this in any deployment reachable off the host** — unset means the endpoint is wide open. |
+| `ARTIFACT_RATE_LIMIT_PER_MIN` | `30` | Requests per minute per client (by API key if present, else by IP) to `/v1/artifacts`. In-memory — only holds correctly for a single process. |
 
 ## API
 

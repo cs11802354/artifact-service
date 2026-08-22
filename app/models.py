@@ -25,7 +25,7 @@ class ArtifactFormat(str, Enum):
 
 class ArtifactSection(BaseModel):
     heading: str = Field(min_length=1, max_length=200)
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=20_000)
 
 
 class ArtifactSpec(BaseModel):
